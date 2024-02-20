@@ -13,6 +13,12 @@ using UnityEngine;
 
 public class PlayerController : Unit
 {
+    enum PlayerAction : int
+    {
+        Idle = -1, normalAttack_1 = 0, normalAttack_2 = 1
+    }
+
+
     [SerializeField] private Animator anim; //Warrior의 Animator를 바꾸기 위한 serializedField
     private BoxCollider2D myCollider; //본인 collider
     private Rigidbody2D myRigid; //본인 rigidbody
@@ -26,10 +32,11 @@ public class PlayerController : Unit
 
     [SerializeField] private bool isBlocked;
 
-    private bool[] processingAttack; //추가타 확인 및 변환을 위한 변수
-    private const int maxSequenceAttacking = 2; //추가타의 갯수 저장용 변수
+    private bool[] processingAction; //추가타 확인 및 변환을 위한 변수
+    private const int maxAttackingAction = 2; //추가타의 갯수 저장용 변수
     private delegate IEnumerator AttackCoroutine(); //2타 이후 코루틴을 순차적으로 적용하기 위한 델리게이트
-    private int[] currentAttackChecker; //현재 적용중인 공격이 몇 번째인지 저장하기 위한 변수
+    private PlayerAction[] currentActionChecker; //현재 적용중인 행동과 다음 행동 선입력을 저장하기 위한 2차원 변수 , 나중에 PlayerAction타입과 호완
+
 
     void Start()
     {
@@ -48,14 +55,16 @@ public class PlayerController : Unit
         _hit = new RaycastHit2D[3]; //발 밑으로 ray 3개를 쏘고 정보를 받을 배열
 
 
-        currentAttackChecker = new int[2]; //currentAttack 초기화
-        processingAttack = new bool[maxSequenceAttacking]; //진행 중인 attacking모션
+        currentActionChecker = new PlayerAction[2]; //currentAttack 초기화
+        currentActionChecker[0] = PlayerAction.Idle;
+        currentActionChecker[1] = PlayerAction.Idle;
+        processingAction = new bool[maxAttackingAction]; //진행 중인 attacking모션
     }
 
     // Update is called once per frame
     void Update()
     {
-        Debug.Log(isAttacking + " " + processingAttack[0] + " " + processingAttack[1]);
+        Debug.Log(isAttacking + " " + processingAction[0] + " " + processingAction[1]);
         TryGroundCheck();
         TryJump();
         CheckAirPramameter();
@@ -183,7 +192,7 @@ public class PlayerController : Unit
         anim.SetBool("Rise", isRising);
         anim.SetBool("Fall", isFalling);
         anim.SetBool("Ground", isGround);
-        anim.SetInteger("Attack", currentAttackChecker[0]);
+        anim.SetInteger("Attack", (int)currentActionChecker[0]);
         
     }
 
@@ -224,18 +233,19 @@ public class PlayerController : Unit
         if (Input.GetKeyDown(KeyCode.Z) && !isRising && !isFalling && isGround && !isAttacking)
         {
             StartCoroutine(attackingCoroutine[0]());
-            currentAttackChecker[0]++;
+            currentActionChecker[0]++;
         }
         else if (Input.GetKeyDown(KeyCode.Z) && isAttacking)
         {
-            if (currentAttackChecker[1] == 0)
+            if (currentActionChecker[1] == PlayerAction.Idle)
             {
-                currentAttackChecker[1] = currentAttackChecker[0] + 1;
-                if (currentAttackChecker[1] > maxSequenceAttacking)
+                currentActionChecker[1] = currentActionChecker[0] + 1;
+                if ((int)currentActionChecker[1] > maxAttackingAction - 1)
                 {
-                    currentAttackChecker[1] = 0;
+                    currentActionChecker[1] = PlayerAction.Idle;
+                    return;
                 }
-                StartCoroutine(attackingCoroutine[currentAttackChecker[1] - 1]()); // <-- 수정 필요
+                StartCoroutine(attackingCoroutine[(int)currentActionChecker[1]]()); 
             }
             
         }
@@ -245,12 +255,12 @@ public class PlayerController : Unit
     IEnumerator Attack1Coroutine()
     {
         isAttacking = true;
-        processingAttack[0] = true;
+        processingAction[0] = true;
         yield return new WaitForSeconds(1f);
         isAttacking = false;
-        processingAttack[0] = false;
-        currentAttackChecker[0] = currentAttackChecker[1];
-        currentAttackChecker[1] = 0;
+        processingAction[0] = false;
+        currentActionChecker[0] = currentActionChecker[1];
+        currentActionChecker[1] = PlayerAction.Idle;
         
     }
 
@@ -263,12 +273,12 @@ public class PlayerController : Unit
             yield return new WaitForSeconds(1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime);
         }
         isAttacking = true;
-        processingAttack[1] = true;
+        processingAction[1] = true;
         yield return new WaitForSeconds(0.5f);
-        currentAttackChecker[0] = currentAttackChecker[1];
-        currentAttackChecker[1] = 0;
+        currentActionChecker[0] = currentActionChecker[1];
+        currentActionChecker[1] = PlayerAction.Idle;
         isAttacking = false;
-        processingAttack[1] = false;
+        processingAction[1] = false;
     }
 
 
