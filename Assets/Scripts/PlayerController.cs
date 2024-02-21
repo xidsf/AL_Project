@@ -32,10 +32,10 @@ public class PlayerController : Unit
 
     [SerializeField] private bool isBlocked;
 
-    private bool[] processingAction; //추가타 확인 및 변환을 위한 변수
     private const int maxAttackingAction = 2; //추가타의 갯수 저장용 변수
     private delegate IEnumerator AttackCoroutine(); //2타 이후 코루틴을 순차적으로 적용하기 위한 델리게이트
-    private PlayerAction[] currentActionChecker; //현재 적용중인 행동과 다음 행동 선입력을 저장하기 위한 2차원 변수 , 나중에 PlayerAction타입과 호완
+    private PlayerAction[] currentAction; //현재 적용중인 행동과 다음 행동 선입력을 저장하기 위한 2차원 변수 
+    
 
 
     void Start()
@@ -55,16 +55,14 @@ public class PlayerController : Unit
         _hit = new RaycastHit2D[3]; //발 밑으로 ray 3개를 쏘고 정보를 받을 배열
 
 
-        currentActionChecker = new PlayerAction[2]; //currentAttack 초기화
-        currentActionChecker[0] = PlayerAction.Idle;
-        currentActionChecker[1] = PlayerAction.Idle;
-        processingAction = new bool[maxAttackingAction]; //진행 중인 attacking모션
+        currentAction = new PlayerAction[2]; //currentAction 초기화
+        currentAction[0] = PlayerAction.Idle;
+        currentAction[1] = PlayerAction.Idle;
     }
 
     // Update is called once per frame
     void Update()
     {
-        Debug.Log(isAttacking + " " + processingAction[0] + " " + processingAction[1]);
         TryGroundCheck();
         TryJump();
         CheckAirPramameter();
@@ -140,7 +138,7 @@ public class PlayerController : Unit
 
     private void TryJump()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && isGround)
+        if (Input.GetKeyDown(KeyCode.Space) && isGround && !isAttacking)
         {
             Jump();
         }
@@ -192,7 +190,7 @@ public class PlayerController : Unit
         anim.SetBool("Rise", isRising);
         anim.SetBool("Fall", isFalling);
         anim.SetBool("Ground", isGround);
-        anim.SetInteger("Attack", (int)currentActionChecker[0]);
+        anim.SetInteger("Attack", (int)currentAction[0]);
         
     }
 
@@ -226,28 +224,22 @@ public class PlayerController : Unit
 
     private void TryAttack() //공격 1타 시도
     {
-        AttackCoroutine[] attackingCoroutine = 
-            { Attack1Coroutine, Attack2Coroutine };
-        
-
         if (Input.GetKeyDown(KeyCode.Z) && !isRising && !isFalling && isGround && !isAttacking)
         {
-            StartCoroutine(attackingCoroutine[0]());
-            currentActionChecker[0]++;
+            StartCoroutine(Attack1Coroutine());
+            currentAction[0] = PlayerAction.normalAttack_1;
         }
-        else if (Input.GetKeyDown(KeyCode.Z) && isAttacking)
+        else if (Input.GetKeyDown(KeyCode.Z) && isAttacking) //공격 중 추가 입력하면 다음 행동 예약
         {
-            if (currentActionChecker[1] == PlayerAction.Idle)
+            if (currentAction[1] == PlayerAction.Idle)
             {
-                currentActionChecker[1] = currentActionChecker[0] + 1;
-                if ((int)currentActionChecker[1] > maxAttackingAction - 1)
+                currentAction[1] = currentAction[0] + 1;
+                if ((int)currentAction[1] > maxAttackingAction - 1)
                 {
-                    currentActionChecker[1] = PlayerAction.Idle;
+                    currentAction[1] = PlayerAction.Idle;
                     return;
                 }
-                StartCoroutine(attackingCoroutine[(int)currentActionChecker[1]]()); 
             }
-            
         }
     }
 
@@ -255,42 +247,41 @@ public class PlayerController : Unit
     IEnumerator Attack1Coroutine()
     {
         isAttacking = true;
-        processingAction[0] = true;
-        yield return new WaitForSeconds(1f);
-        isAttacking = false;
-        processingAction[0] = false;
-        currentActionChecker[0] = currentActionChecker[1];
-        currentActionChecker[1] = PlayerAction.Idle;
-        
+        yield return new WaitForSeconds(0.8f); //공격 1타 애니메이션 실행 시간 (바꾸면 수정 해야됨)
+        if (currentAction[1] != PlayerAction.Idle)
+        {
+            if (currentAction[1] == PlayerAction.normalAttack_2)
+            {
+                ChangeToNextMove();
+                StartCoroutine(Attack2Coroutine());
+            }
+        }
+        else
+        {
+            isAttacking = false;
+            currentAction[0] = currentAction[1];
+            currentAction[1] = PlayerAction.Idle;
+        }
     }
 
 
     IEnumerator Attack2Coroutine()
     {
-        
-        if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack1"))
-        {
-            yield return new WaitForSeconds(1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime);
-        }
         isAttacking = true;
-        processingAction[1] = true;
-        yield return new WaitForSeconds(0.5f);
-        currentActionChecker[0] = currentActionChecker[1];
-        currentActionChecker[1] = PlayerAction.Idle;
+        yield return new WaitForSeconds(0.4f);//공격 2타 애니메이션 실행 시간 (바꾸면 수정 해야됨)
+        ChangeToNextMove();
         isAttacking = false;
-        processingAction[1] = false;
     }
-
-
-
-
-
-
-
 
     public override void ChangeMyHealth(int _change)
     {
         __currentHP += _change;
+    }
+
+    private void ChangeToNextMove()
+    {
+        currentAction[0] = currentAction[1];
+        currentAction[1] = PlayerAction.Idle;
     }
 
     protected override void Defence()

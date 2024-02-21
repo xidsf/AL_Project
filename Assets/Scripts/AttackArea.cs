@@ -16,7 +16,7 @@ public class AttackArea : MonoBehaviour
     {
         if(collision != null)
         {
-            collision.gameObject.GetComponent<Unit>().ChangeMyHealth(_damage);
+            collision.gameObject.GetComponent<Unit>().ChangeMyHealth(-_damage);
         }
     }
 
