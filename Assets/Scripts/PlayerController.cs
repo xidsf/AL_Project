@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UIElements;
 /*
  * animation croush 수정해야됨 
  * 
@@ -13,12 +14,6 @@ using UnityEngine;
 
 public class PlayerController : Unit
 {
-    enum PlayerAction : int
-    {
-        Idle = -1, normalAttack_1 = 0, normalAttack_2 = 1
-    }
-
-
     [SerializeField] private Animator anim; //Warrior의 Animator를 바꾸기 위한 serializedField
     private BoxCollider2D myCollider; //본인 collider
     private Rigidbody2D myRigid; //본인 rigidbody
@@ -30,13 +25,14 @@ public class PlayerController : Unit
     private float _lastPos; //움직임 채크를 위한 이전 위치 저장 변수
     private RaycastHit2D[] _hit; //raycast정보 저장을 위한 변수
 
-    [SerializeField] private bool isBlocked;
+    private bool isBlocked; //플레이어가 벽으로 이동하면 벽을 뚫는 현상 수정을 위한 불값
+    private bool notInputAttack; //플레이어의 공격입력을 제한하는 변수
+    private bool isDash; //대쉬중이면 순간무적 (개발 예정)
 
-    private const int maxAttackingAction = 2; //추가타의 갯수 저장용 변수
-    private delegate IEnumerator AttackCoroutine(); //2타 이후 코루틴을 순차적으로 적용하기 위한 델리게이트
-    private PlayerAction[] currentAction; //현재 적용중인 행동과 다음 행동 선입력을 저장하기 위한 2차원 변수 
-    
 
+    [SerializeField] private float dashDelay; //대쉬를 사용하기 위해 필요한 쿨타임
+    [SerializeField] private float dashSpeed; //대쉬 스피드 변수
+    private float currentDashCalculate; //대쉬 쿨타임 계산을 위한 변수
 
     void Start()
     {
@@ -53,11 +49,8 @@ public class PlayerController : Unit
         ColliderSizes[1] = new Vector2(1.08665276f, 1.79312909f); //플레이어가 달릴때 필요한 collider크기
 
         _hit = new RaycastHit2D[3]; //발 밑으로 ray 3개를 쏘고 정보를 받을 배열
+        currentDashCalculate = 0; // 쿨타임 계산 변수 초기화
 
-
-        currentAction = new PlayerAction[2]; //currentAction 초기화
-        currentAction[0] = PlayerAction.Idle;
-        currentAction[1] = PlayerAction.Idle;
     }
 
     // Update is called once per frame
@@ -67,7 +60,8 @@ public class PlayerController : Unit
         TryJump();
         CheckAirPramameter();
         TryAttack();
-
+        CalculateDashDelay();
+        TryDash();
         AnimCheck();
     }
 
@@ -81,9 +75,13 @@ public class PlayerController : Unit
 
     private void TryMove()
     {
-        if(!isAttacking)
+        if(!isAttacking && !isDash)
         {
             Move();
+        }
+        else if (isDash)
+        {
+            Dash();
         }
     }
 
@@ -101,6 +99,28 @@ public class PlayerController : Unit
         }
     }
 
+    private void Dash()
+    {
+        float _positionX = Input.GetAxisRaw("Horizontal");
+        float _dir;
+        if( _positionX != 0 )
+        {
+            transform.localScale = new Vector3(_positionX, transform.localScale.y, transform.localScale.z);
+            _dir = _positionX;
+        }
+        else
+        {
+            if (transform.localScale.x < 0) _dir = -1;
+            else _dir = 1;
+        }
+        if (!isBlocked)
+        {
+            _dir = _dir * dashSpeed * Time.deltaTime;
+            transform.position = new Vector2(transform.position.x + _dir, transform.position.y);
+        }
+        
+    }
+
     private void MoveCheck()
     {
         if (MathF.Abs(_lastPos - transform.position.x) >= 0.01f)
@@ -113,6 +133,29 @@ public class PlayerController : Unit
         }
         _lastPos = transform.position.x;
     }
+
+    private void CalculateDashDelay()
+    {
+        if(currentDashCalculate > 0)
+        {
+            currentDashCalculate -= Time.deltaTime;
+        }
+    }
+
+    private void TryDash()
+    {
+        if(Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            if (currentDashCalculate <= 0)
+            {
+                anim.SetTrigger("Dash");
+                isDash = true;
+                notInputAttack = true;
+                currentDashCalculate = dashDelay;
+            }
+        }
+    }
+    
 
     private void RestrictVelocity() //낙하 속도 제한
     {
@@ -184,14 +227,10 @@ public class PlayerController : Unit
 
     private void AnimCheck() //파라미터를 이용한 매니매이션 변경 함수
     {
-        
-        
         anim.SetBool("Run", isMoving);
         anim.SetBool("Rise", isRising);
         anim.SetBool("Fall", isFalling);
         anim.SetBool("Ground", isGround);
-        anim.SetInteger("Attack", (int)currentAction[0]);
-        
     }
 
     public void CheckPlayerBlocked(bool _flag) //캐릭터 벽뚫방지용 collider확인
@@ -220,30 +259,56 @@ public class PlayerController : Unit
         }
     }
 
-    
-
-    private void TryAttack() //공격 1타 시도
+    private void TryAttack() //공격 시도
     {
-        if (Input.GetKeyDown(KeyCode.Z) && !isRising && !isFalling && isGround && !isAttacking)
+        if (Input.GetKeyDown(KeyCode.Z) && !isRising && !isFalling && isGround && !notInputAttack)
         {
-            StartCoroutine(Attack1Coroutine());
-            currentAction[0] = PlayerAction.normalAttack_1;
-        }
-        else if (Input.GetKeyDown(KeyCode.Z) && isAttacking) //공격 중 추가 입력하면 다음 행동 예약
-        {
-            if (currentAction[1] == PlayerAction.Idle)
-            {
-                currentAction[1] = currentAction[0] + 1;
-                if ((int)currentAction[1] > maxAttackingAction - 1)
-                {
-                    currentAction[1] = PlayerAction.Idle;
-                    return;
-                }
-            }
+            Attack();
         }
     }
 
+    
 
+    protected override void Attack()
+    {
+        anim.SetTrigger("Attack");
+        isAttacking = true;
+    }
+
+    public void ClearState()
+    {
+        isMoving = false; //움직임 초기화
+        isAttacking = false; //공격중 변수 초기화
+        notInputAttack = false; //막타 공격중 초기화
+    }
+
+    public void ChangeisAttacking(bool _flag)
+    {
+        isAttacking = true;
+    }
+
+    public void ChangeLastNormalAttack(bool _flag)
+    {
+        notInputAttack = _flag;
+    }
+
+    public void FinishDash()
+    {
+        isDash = false;
+    }
+
+
+
+    protected override void Defence()
+    {
+    }
+
+    
+
+    
+
+    /*
+    
     IEnumerator Attack1Coroutine()
     {
         isAttacking = true;
@@ -271,25 +336,15 @@ public class PlayerController : Unit
         yield return new WaitForSeconds(0.4f);//공격 2타 애니메이션 실행 시간 (바꾸면 수정 해야됨)
         ChangeToNextMove();
         isAttacking = false;
-    }
+    }*/
 
-    public override void ChangeMyHealth(int _change)
-    {
-        __currentHP += _change;
-    }
 
+    /*
     private void ChangeToNextMove()
     {
         currentAction[0] = currentAction[1];
         currentAction[1] = PlayerAction.Idle;
     }
+    */
 
-    protected override void Defence()
-    {
-    }
-
-    protected override void Attack()
-    {
-        
-    }
 }

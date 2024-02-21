@@ -303,7 +303,8 @@ MonoBehaviour:
   __defenceSpeed: 0
   __recoveryTime: 0
   anim: {fileID: 1468131942}
-  isBlocked: 0
+  dashDelay: 1
+  dashSpeed: 12
 --- !u!4 &1266554657
 Transform:
   m_ObjectHideFlags: 0
@@ -931,6 +932,7 @@ GameObject:
   - component: {fileID: 1468131943}
   - component: {fileID: 1468131942}
   - component: {fileID: 1468131941}
+  - component: {fileID: 1468131944}
   m_Layer: 6
   m_Name: Warrior
   m_TagString: Untagged
@@ -978,7 +980,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_Sprite: {fileID: -3318188226485093758, guid: ae72133dacba6ec4eb33ecde48f50e56, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -1026,6 +1028,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1266554657}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1468131944
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1468131940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7d6cb887f1c4984fa35341fed855b43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  thePlayerController: {fileID: 1266554653}
 --- !u!1 &2137919045
 GameObject:
   m_ObjectHideFlags: 0

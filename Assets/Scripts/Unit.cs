@@ -26,8 +26,20 @@ abstract public class Unit : MonoBehaviour
     abstract protected void Move();
     abstract protected void Attack();
     abstract protected void Defence();
-    abstract public void ChangeMyHealth(int _change);
     
+    public void ChangeMyHealth(int _change)
+    {
+        if(_change < 0)
+        {
+            __currentHP = __currentHP + _change + (int)__defencePoint;
+        }
+        else
+        {
+            __currentHP = __currentHP + _change;
+        }
+
+    }
+
     public float GetAttackPoint()
     {
         return __attackPoint;
