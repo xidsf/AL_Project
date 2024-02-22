@@ -302,8 +302,9 @@ MonoBehaviour:
   __attackSpeed: 0
   __defenceSpeed: 0
   __recoveryTime: 0
+  playerAnimatorController: {fileID: 0}
   anim: {fileID: 1468131942}
-  dashDelay: 1
+  dashDelay: 2
   dashSpeed: 12
 --- !u!4 &1266554657
 Transform:
@@ -1040,7 +1041,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7d6cb887f1c4984fa35341fed855b43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  thePlayerController: {fileID: 1266554653}
 --- !u!1 &2137919045
 GameObject:
   m_ObjectHideFlags: 0

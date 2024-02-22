@@ -12,7 +12,7 @@ using UnityEngine.UIElements;
  */
 
 
-public class PlayerController : Unit
+public partial class PlayerController : Unit
 {
     [SerializeField] private Animator anim; //Warrior의 Animator를 바꾸기 위한 serializedField
     private BoxCollider2D myCollider; //본인 collider
@@ -62,6 +62,7 @@ public class PlayerController : Unit
         TryAttack();
         CalculateDashDelay();
         TryDash();
+        ChangeAnimationParameter();
         AnimCheck();
     }
 
@@ -225,13 +226,6 @@ public class PlayerController : Unit
         return false;
     }
 
-    private void AnimCheck() //파라미터를 이용한 매니매이션 변경 함수
-    {
-        anim.SetBool("Run", isMoving);
-        anim.SetBool("Rise", isRising);
-        anim.SetBool("Fall", isFalling);
-        anim.SetBool("Ground", isGround);
-    }
 
     public void CheckPlayerBlocked(bool _flag) //캐릭터 벽뚫방지용 collider확인
     {
@@ -272,7 +266,6 @@ public class PlayerController : Unit
     protected override void Attack()
     {
         anim.SetTrigger("Attack");
-        isAttacking = true;
     }
 
     public void ClearState()
