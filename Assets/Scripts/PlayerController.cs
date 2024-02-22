@@ -15,17 +15,12 @@ using UnityEngine.UIElements;
 public partial class PlayerController : Unit
 {
     [SerializeField] private Animator anim; //Warrior의 Animator를 바꾸기 위한 serializedField
-    private BoxCollider2D myCollider; //본인 collider
-    private Rigidbody2D myRigid; //본인 rigidbody
 
     //이동 중 collider변환 용(0: 기본 1: 이동중)
     private Vector2[] ColliderOffsets = new Vector2[2];
     private Vector2[] ColliderSizes = new Vector2[2];
 
-    private float _lastPos; //움직임 채크를 위한 이전 위치 저장 변수
-    private RaycastHit2D[] _hit; //raycast정보 저장을 위한 변수
-
-    private bool isBlocked; //플레이어가 벽으로 이동하면 벽을 뚫는 현상 수정을 위한 불값
+    
     private bool notInputAttack; //플레이어의 공격입력을 제한하는 변수
     private bool isDash; //대쉬중이면 순간무적 (개발 예정)
 
@@ -48,7 +43,6 @@ public partial class PlayerController : Unit
         ColliderOffsets[1] = new Vector2(0.0508289337f, -0.369088709f);
         ColliderSizes[1] = new Vector2(1.08665276f, 1.79312909f); //플레이어가 달릴때 필요한 collider크기
 
-        _hit = new RaycastHit2D[3]; //발 밑으로 ray 3개를 쏘고 정보를 받을 배열
         currentDashCalculate = 0; // 쿨타임 계산 변수 초기화
 
     }
@@ -122,18 +116,7 @@ public partial class PlayerController : Unit
         
     }
 
-    private void MoveCheck()
-    {
-        if (MathF.Abs(_lastPos - transform.position.x) >= 0.01f)
-        {
-            isMoving = true;
-        }
-        else
-        {
-            isMoving = false;
-        }
-        _lastPos = transform.position.x;
-    }
+    
 
     private void CalculateDashDelay()
     {
@@ -191,45 +174,6 @@ public partial class PlayerController : Unit
     private void Jump()
     {
         myRigid.velocity += new Vector2(myRigid.velocity.x, __jumpForce);
-    }
-
-    private void TryGroundCheck()
-    {
-        isGround = GroundCheck();
-    }
-
-    private bool GroundCheck()
-    {
-        
-        float _rayCastLength = 0.05f;
-        Vector2 _bottomLeft = new Vector2(myCollider.bounds.center.x - myCollider.bounds.extents.x, myCollider.bounds.center.y - myCollider.bounds.extents.y);
-        Vector2 _bottomRight = new Vector2(myCollider.bounds.center.x + myCollider.bounds.extents.x, myCollider.bounds.center.y - myCollider.bounds.extents.y);
-        Vector2 _bottomCenter = new Vector2(myCollider.bounds.center.x, myCollider.bounds.center.y - myCollider.bounds.extents.y);
-        _hit[0] = Physics2D.Raycast(_bottomCenter, Vector2.down, _rayCastLength, LayerMask.GetMask("Ground"));
-        _hit[1] = Physics2D.Raycast(_bottomLeft, Vector2.down, _rayCastLength, LayerMask.GetMask("Ground"));
-        _hit[2] = Physics2D.Raycast(_bottomRight, Vector2.down, _rayCastLength, LayerMask.GetMask("Ground"));
-
-        Debug.DrawRay(_bottomLeft, Vector2.down * _rayCastLength, Color.red);
-        Debug.DrawRay(_bottomRight, Vector2.down * _rayCastLength, Color.red);
-        Debug.DrawRay(_bottomCenter, Vector2.down * _rayCastLength, Color.red);
-
-        for (int i = 0; i < 3; i++)
-        {
-            if (_hit[i].collider != null)
-            {
-                if (_hit[i].collider.CompareTag("Ground"))
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-
-    public void CheckPlayerBlocked(bool _flag) //캐릭터 벽뚫방지용 collider확인
-    {
-        isBlocked = _flag;
     }
 
     private void CheckAirPramameter() //공중 애니매이션변환을 위한 파라미터값 변경 함수
@@ -291,10 +235,6 @@ public partial class PlayerController : Unit
     }
 
 
-
-    protected override void Defence()
-    {
-    }
 
     
 
