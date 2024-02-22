@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Unity.VisualScripting;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 /*
@@ -12,7 +13,7 @@ using UnityEngine.UIElements;
  */
 
 
-public class PlayerController : Unit
+public partial class PlayerController : Unit
 {
     [SerializeField] private Animator anim; //Warrior의 Animator를 바꾸기 위한 serializedField
     private BoxCollider2D myCollider; //본인 collider
@@ -26,13 +27,14 @@ public class PlayerController : Unit
     private RaycastHit2D[] _hit; //raycast정보 저장을 위한 변수
 
     private bool isBlocked; //플레이어가 벽으로 이동하면 벽을 뚫는 현상 수정을 위한 불값
-    private bool notInputAttack; //플레이어의 공격입력을 제한하는 변수
-    private bool isDash; //대쉬중이면 순간무적 (개발 예정)
-
+    [SerializeField] private bool notInputAttack; //플레이어의 공격입력을 제한하는 변수
+    [SerializeField] private bool isDash; //대쉬중이면 순간무적 (개발 예정)
 
     [SerializeField] private float dashDelay; //대쉬를 사용하기 위해 필요한 쿨타임
     [SerializeField] private float dashSpeed; //대쉬 스피드 변수
     private float currentDashCalculate; //대쉬 쿨타임 계산을 위한 변수
+
+    
 
     void Start()
     {
@@ -50,7 +52,7 @@ public class PlayerController : Unit
 
         _hit = new RaycastHit2D[3]; //발 밑으로 ray 3개를 쏘고 정보를 받을 배열
         currentDashCalculate = 0; // 쿨타임 계산 변수 초기화
-
+        ClipsDictionaryInitialize();
     }
 
     // Update is called once per frame
@@ -62,6 +64,7 @@ public class PlayerController : Unit
         TryAttack();
         CalculateDashDelay();
         TryDash();
+        ChangeAnimationParameter();
         AnimCheck();
     }
 
@@ -225,14 +228,6 @@ public class PlayerController : Unit
         return false;
     }
 
-    private void AnimCheck() //파라미터를 이용한 매니매이션 변경 함수
-    {
-        anim.SetBool("Run", isMoving);
-        anim.SetBool("Rise", isRising);
-        anim.SetBool("Fall", isFalling);
-        anim.SetBool("Ground", isGround);
-    }
-
     public void CheckPlayerBlocked(bool _flag) //캐릭터 벽뚫방지용 collider확인
     {
         isBlocked = _flag;
@@ -267,44 +262,14 @@ public class PlayerController : Unit
         }
     }
 
-    
-
     protected override void Attack()
     {
         anim.SetTrigger("Attack");
         isAttacking = true;
     }
-
-    public void ClearState()
-    {
-        isMoving = false; //움직임 초기화
-        isAttacking = false; //공격중 변수 초기화
-        notInputAttack = false; //막타 공격중 초기화
-    }
-
-    public void ChangeisAttacking(bool _flag)
-    {
-        isAttacking = true;
-    }
-
-    public void ChangeLastNormalAttack(bool _flag)
-    {
-        notInputAttack = _flag;
-    }
-
-    public void FinishDash()
-    {
-        isDash = false;
-    }
-
-
-
     protected override void Defence()
     {
     }
-
-    
-
     
 
     /*

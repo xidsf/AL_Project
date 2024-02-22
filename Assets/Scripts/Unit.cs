@@ -22,6 +22,7 @@ abstract public class Unit : MonoBehaviour
     protected bool isFalling; //떨어지고 있는지 확인하기 위한 변수
     protected bool isRising; //올라가고 있는지 확인
     protected bool isAttacking; //공격중 채크
+    protected bool isImmune; //공격 면역인지 확인 변수
 
     abstract protected void Move();
     abstract protected void Attack();
