@@ -6,34 +6,45 @@ using System.Runtime.CompilerServices;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UIElements;
-/*
- * animation croush 수정해야됨 
- * 
- */
+using UnityEditor.Animations;
+using UnityEditor;
+using UnityEngine.Rendering;
 
 
 public partial class PlayerController : Unit
 {
+    enum PlayerAction
+    {
+        Idle = 0, Fall, Jump, Rise,  Run, Dash, Attack1, Attack2, Attack3
+    }
+
+    [Header("PlayerAnimator")]
     [SerializeField] private Animator anim; //Warrior의 Animator를 바꾸기 위한 serializedField
 
     //이동 중 collider변환 용(0: 기본 1: 이동중)
     private Vector2[] ColliderOffsets = new Vector2[2];
     private Vector2[] ColliderSizes = new Vector2[2];
 
-    
+
     private bool notInputAttack; //플레이어의 공격입력을 제한하는 변수
     private bool isDash; //대쉬중이면 순간무적 (개발 예정)
 
-
+    [Header("PlayerDash")]
     [SerializeField] private float dashDelay; //대쉬를 사용하기 위해 필요한 쿨타임
     [SerializeField] private float dashSpeed; //대쉬 스피드 변수
     private float currentDashCalculate; //대쉬 쿨타임 계산을 위한 변수
 
+    private Collider2D[] attackedUnits;//공격 당한 모든 유닛들을 저장하기 위한 배열
+    private LayerMask EnemyLayer; //적만 공격하게 하기 위한 layermask
+    [SerializeField] private Vector2 attackArea; //공격 범위
+    [SerializeField] private Vector2 attackAreaCenter;
+    private IEnumerator[] processingCoroutine; //진행중인 코루틴 stopcoroutine하기 위해 저장
+
     void Start()
     {
-        isAttacking = false;
-
         _lastPos = transform.position.x; //움직인 확인을 위한 초기값
+
+        ClipsDictionaryInitialize();
 
         myRigid = GetComponent<Rigidbody2D>();
         myCollider = GetComponent<BoxCollider2D>(); //필요한 컴포넌트
@@ -44,7 +55,8 @@ public partial class PlayerController : Unit
         ColliderSizes[1] = new Vector2(1.08665276f, 1.79312909f); //플레이어가 달릴때 필요한 collider크기
 
         currentDashCalculate = 0; // 쿨타임 계산 변수 초기화
-
+        processingCoroutine = new IEnumerator[2];
+        EnemyLayer = LayerMask.GetMask("Enemy");
     }
 
     // Update is called once per frame
@@ -53,10 +65,10 @@ public partial class PlayerController : Unit
         TryGroundCheck();
         TryJump();
         CheckAirPramameter();
-        TryAttack();
         CalculateDashDelay();
         TryDash();
         ChangeAnimationParameter();
+        TryAttack();
         AnimCheck();
     }
 
@@ -82,6 +94,7 @@ public partial class PlayerController : Unit
 
     protected override void Move()
     {
+        
         float _positionX = Input.GetAxisRaw("Horizontal");
         if( _positionX != 0 )
         {
@@ -135,6 +148,16 @@ public partial class PlayerController : Unit
                 anim.SetTrigger("Dash");
                 isDash = true;
                 notInputAttack = true;
+                if(processingCoroutine[0] != null)
+                {
+                    StopCoroutine(processingCoroutine[0]);
+                    processingCoroutine[0] = null;
+                }
+                if(processingCoroutine[1] != null)
+                {
+                    StopCoroutine(processingCoroutine[1]);
+                    processingCoroutine[1] = null;
+                }
                 currentDashCalculate = dashDelay;
             }
         }
@@ -210,42 +233,92 @@ public partial class PlayerController : Unit
     protected override void Attack()
     {
         anim.SetTrigger("Attack");
+        if (processingCoroutine[0] == null)
+        {
+            processingCoroutine[0] = AttackCoroutine();
+            StartCoroutine(processingCoroutine[0]);
+        }
+        else if (processingCoroutine[1] == null && isAttacking)
+        {
+            processingCoroutine[1] = AttackCoroutine();
+        }
     }
-
-    public void ClearState()
-    {
-        isMoving = false; //움직임 초기화
-        isAttacking = false; //공격중 변수 초기화
-        notInputAttack = false; //막타 공격중 초기화
-    }
-
-    public void ChangeisAttacking(bool _flag)
-    {
-        isAttacking = true;
-    }
-
-    public void ChangeLastNormalAttack(bool _flag)
-    {
-        notInputAttack = _flag;
-    }
-
-    public void FinishDash()
-    {
-        isDash = false;
-    }
-
-
 
     
+    IEnumerator AttackCoroutine()
+    {
+        //1타: 8프레임 중 5 프레임
+        //2타: 4 프레임 중 1 프레임
+        //3타: 9 프레임 중 2 프레임
+        string _actionName = null; //공격 별로 공격 적용 시점구별을 위한 이름
+        float _attackTime = 0; //어택 타이밍
+        Unit _tempUnit; //공격당한 유닛들 데미지
 
-    
+        for (int i = 0; i < (1f / Time.deltaTime); i++)
+        {
+            if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack1"))
+            {
+                _actionName = "Attack1";
+                _attackTime = 5f / 8f;
+                attackAreaCenter = Vector2.right;
+                attackArea = new Vector2(2.4f, 2.4f);
+                break;
+            }
+            else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack2"))
+            {
+                _actionName = "Attack2";
+                _attackTime = 1f / 4f;
+                attackAreaCenter = new Vector2(0.5f, 0.1f);
+                attackArea = new Vector2(2.35f,2.8f);
+                break;
+            }
+            else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack3"))
+            {
+                _actionName = "Attack3";
+                _attackTime = 2f / 9f;
+                attackAreaCenter = Vector2.right;
+                attackArea = new Vector2(3f, 2.4f);
+                break;
+            }
+            yield return null;
+        }
+        if(_actionName != null)
+        {
+            yield return new WaitForSeconds(ClipsNameLengthsInfo[_actionName] * Mathf.Clamp(_attackTime - anim.GetCurrentAnimatorStateInfo(0).normalizedTime, 0, _attackTime));
+            if (isDash)
+            {
+                yield break;
+            }
+            attackedUnits = Physics2D.OverlapBoxAll(transform.position + new Vector3(attackAreaCenter.x, attackAreaCenter.y, 0) * transform.localScale.x, attackArea, 0, EnemyLayer);
+            
+            foreach (var unit in attackedUnits)
+            {
+                _tempUnit = unit.GetComponent<Unit>();
+                if (_tempUnit != null)
+                {
+                    _tempUnit.ChangeMyHealth(-(int)__attackPoint);
+                }
+            }
+            yield return new WaitForSeconds(ClipsNameLengthsInfo[_actionName] * (1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime));
+            
+        }
+        processingCoroutine[0] = null;
+        if (processingCoroutine[1] != null)
+        {
+            processingCoroutine[0] = processingCoroutine[1];
+            processingCoroutine[1] = null;
+            StartCoroutine(processingCoroutine[0]);
+        }
+    }
+
+
 
     /*
     
     IEnumerator Attack1Coroutine()
     {
         isAttacking = true;
-        yield return new WaitForSeconds(0.8f); //공격 1타 애니메이션 실행 시간 (바꾸면 수정 해야됨)
+        yield return new WaitForSeconds(0.8f);
         if (currentAction[1] != PlayerAction.Idle)
         {
             if (currentAction[1] == PlayerAction.normalAttack_2)
@@ -266,7 +339,7 @@ public partial class PlayerController : Unit
     IEnumerator Attack2Coroutine()
     {
         isAttacking = true;
-        yield return new WaitForSeconds(0.4f);//공격 2타 애니메이션 실행 시간 (바꾸면 수정 해야됨)
+        yield return new WaitForSeconds(0.4f);
         ChangeToNextMove();
         isAttacking = false;
     }*/

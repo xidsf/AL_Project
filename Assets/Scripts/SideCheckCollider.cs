@@ -17,7 +17,6 @@ public class SideCheckCollider : MonoBehaviour
         {
             if (collision.gameObject.CompareTag("Ground"))
             {
-                
                 myUnit.CheckPlayerBlocked(true);
             }
         }
@@ -30,7 +29,6 @@ public class SideCheckCollider : MonoBehaviour
         {
             if (collision.gameObject.CompareTag("Ground"))
             {
-                
                 myUnit.CheckPlayerBlocked(false);
             }
         }

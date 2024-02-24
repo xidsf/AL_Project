@@ -6,26 +6,25 @@ using UnityEditor.Animations;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
-//애니메이션 코드가 길어질 것 같아 따로 코드 제작
+//애니메이션 코드가 길어질 것 같아 따로 코드 제작...했는데 별로 안김,,,ㅋ
 
 public partial class PlayerController : Unit
 {
+    [Header("PlayerAnimatorController")]
     [SerializeField] AnimatorController playerAnimatorController; //플레이어 애니메이션 변환에 따른 행동을 제어하기 위한 파일
-
-    //private Dictionary<string, float> ClipsNameLengthsInfo = new Dictionary<string, float>(); //?? 아직 사용처x
-    //private IEnumerator processingCoroutine; //진행중인 코루틴 stopcoroutine하기 위해 저장 // animEvent로 대체
-
+    
     private bool isClearedInIdle; //Idle변환 / 한번 상태 초기화 시키면 다른 액션을 할 때까지 초기화X
+    private Dictionary<string, float> ClipsNameLengthsInfo = new Dictionary<string, float>(); //공격종류와 공격 별 걸리는 시간을 저장한 dictionary
 
-    /*
     private void ClipsDictionaryInitialize()
     {
         for (int i = 0; i < playerAnimatorController.animationClips.Length; i++)
         {
             ClipsNameLengthsInfo.Add(playerAnimatorController.animationClips[i].name, playerAnimatorController.animationClips[i].length);
+            //Debug.Log(playerAnimatorController.animationClips[i].name + playerAnimatorController.animationClips[i].length);
         }
     }
-    */
+
     private void AnimCheck() //파라미터를 이용한 매니매이션 변경 함수
     {
         anim.SetBool("Run", isMoving);
@@ -84,8 +83,10 @@ public partial class PlayerController : Unit
         notInputAttack = false;
         yield return new WaitForSeconds(1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime);
     }
+    
 
-    /*  animEvent로 대체
+
+    /*  animEvent로 대체 : coroutine과 animationEvent중 뭐로 구현하는게 좋은진 모르겠지만 AnimationEvent가 편해서 걍 함
     private void TryChangeDirection()
     {
         float _dirX = Input.GetAxisRaw("Horizontal");
