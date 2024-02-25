@@ -1,29 +1,17 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEditor.Animations;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 //애니메이션 코드가 길어질 것 같아 따로 코드 제작...했는데 별로 안김,,,ㅋ
 
 public partial class PlayerController : Unit
 {
-    [Header("PlayerAnimatorController")]
-    [SerializeField] AnimatorController playerAnimatorController; //플레이어 애니메이션 변환에 따른 행동을 제어하기 위한 파일
     
     private bool isClearedInIdle; //Idle변환 / 한번 상태 초기화 시키면 다른 액션을 할 때까지 초기화X
-    private Dictionary<string, float> ClipsNameLengthsInfo = new Dictionary<string, float>(); //공격종류와 공격 별 걸리는 시간을 저장한 dictionary
-
-    private void ClipsDictionaryInitialize()
-    {
-        for (int i = 0; i < playerAnimatorController.animationClips.Length; i++)
-        {
-            ClipsNameLengthsInfo.Add(playerAnimatorController.animationClips[i].name, playerAnimatorController.animationClips[i].length);
-            //Debug.Log(playerAnimatorController.animationClips[i].name + playerAnimatorController.animationClips[i].length);
-        }
-    }
+    
+    private const float dashEndTime = 3f / 7f;
+    IEnumerator _savedDashCoroutine;
 
     private void AnimCheck() //파라미터를 이용한 매니매이션 변경 함수
     {
@@ -61,11 +49,27 @@ public partial class PlayerController : Unit
                 notInputAttack = true;
             }
         }
+        else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
+        {
+            isAttacking = true;
+            if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 0.8f)
+            {
+                notInputAttack = false;
+            }
+            else
+            {
+                notInputAttack = true;
+            }
+            if(anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 3f / 11f)
+            {
+                isDash = false;
+            }
+        }
         else if(anim.GetCurrentAnimatorStateInfo(0).IsName("Dash"))
         {
             ClearAnimationParameter();
-            notInputAttack = true;
-            StartCoroutine(DashCoroutine());
+            _savedDashCoroutine = DashCoroutine();
+            StartCoroutine(_savedDashCoroutine);
         }
         
     }
@@ -78,9 +82,8 @@ public partial class PlayerController : Unit
 
     IEnumerator DashCoroutine()
     {
-        yield return new WaitForSeconds(0.6f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime);
+        yield return new WaitForSeconds(UnitAnimationClipInfo["Dash"] * (1f - dashEndTime));
         isDash = false;
-        notInputAttack = false;
         yield return new WaitForSeconds(1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime);
     }
     

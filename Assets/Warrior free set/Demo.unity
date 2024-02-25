@@ -577,21 +577,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0730266aedad0f4b920ee6d92cb6ee0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  __currentHP: 10
-  __maxHP: 10
+  __currentHP: 15
+  __maxHP: 15
   __attackPoint: 3
   __defencePoint: 1
   __jumpForce: 17
   __limitFallingVelocity: 20
+  __ImmuneTime: 0
   __moveSpeed: 7
   __attackSpeed: 0
   __recoveryTime: 0
-  playerAnimatorController: {fileID: 9100000, guid: 312496b25d842af4a938e96c7d5aaee0, type: 2}
+  UnitAnimatorController: {fileID: 9100000, guid: 312496b25d842af4a938e96c7d5aaee0, type: 2}
   anim: {fileID: 1468131942}
   dashDelay: 2
   dashSpeed: 12
-  attackArea: {x: 0, y: 0}
-  attackAreaCenter: {x: 0, y: 0}
 --- !u!4 &1266554657
 Transform:
   m_ObjectHideFlags: 0
@@ -4140,16 +4139,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f68b47595ff799e4aa1d5c1961835c48, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  __currentHP: 5
-  __maxHP: 5
+  __currentHP: 10
+  __maxHP: 10
   __attackPoint: 1
   __defencePoint: 1
   __jumpForce: 3
   __limitFallingVelocity: 20
+  __ImmuneTime: 0
   __moveSpeed: 7
   __attackSpeed: 2
   __recoveryTime: 8
+  UnitAnimatorController: {fileID: 9100000, guid: b95265f99b6d90e438df1308a89c8bab, type: 2}
   _HPText: {fileID: 90045649}
+  TransparentMaterial: {fileID: 2100000, guid: 4a7ce4fbad7802d4981bbad6281a8dda, type: 2}
 --- !u!61 &3562954906806568463
 BoxCollider2D:
   m_ObjectHideFlags: 0

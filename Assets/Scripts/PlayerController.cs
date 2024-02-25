@@ -1,21 +1,25 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
-using Unity.VisualScripting;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UIElements;
-using UnityEditor.Animations;
-using UnityEditor;
-using UnityEngine.Rendering;
 
 
 public partial class PlayerController : Unit
 {
-    enum PlayerAction
+    public struct PlayerAttackActionInfo
     {
-        Idle = 0, Fall, Jump, Rise,  Run, Dash, Attack1, Attack2, Attack3
+        public PlayerAttackActionInfo(string _Name = "None", float _time = 0,  Vector2 _center = default(Vector2), Vector2 _area = default(Vector2), float _coefficient = 1f)
+        {
+            actionName = _Name;
+            attackTime = _time;
+            attackAreaCenter = _center;
+            attackArea = _area;
+            attackCoefficient = _coefficient;
+        }
+        public string actionName; //공격 별로 공격 적용 시점구별을 위한 이름
+        public float attackTime; //어택 타이밍
+        public Vector2 attackArea; //공격 범위
+        public Vector2 attackAreaCenter; //공격의 중심좌표
+        public float attackCoefficient; //데미지 계수
     }
 
     [Header("PlayerAnimator")]
@@ -36,10 +40,18 @@ public partial class PlayerController : Unit
 
     private Collider2D[] attackedUnits;//공격 당한 모든 유닛들을 저장하기 위한 배열
     private LayerMask EnemyLayer; //적만 공격하게 하기 위한 layermask
-    [SerializeField] private Vector2 attackArea; //공격 범위
-    [SerializeField] private Vector2 attackAreaCenter;
     private IEnumerator[] processingCoroutine; //진행중인 코루틴 stopcoroutine하기 위해 저장
+    //걍 볼려고 serializedField넣음
+    [SerializeField] readonly PlayerAttackActionInfo Attack1 = 
+        new PlayerAttackActionInfo("Attack1", 5f / 8f, Vector2.right, new Vector2(2.4f, 2.4f), 1);
+    [SerializeField] readonly PlayerAttackActionInfo Attack2 = 
+        new PlayerAttackActionInfo("Attack2", 1f / 4f, new Vector2(0.5f, 0.1f), new Vector2(2.35f, 2.8f), 0.8f);
+    [SerializeField] readonly PlayerAttackActionInfo Attack3 = 
+        new PlayerAttackActionInfo("Attack3", 2f / 9f, Vector2.right, new Vector2(3f, 2.4f), 1.3f);
+    [SerializeField] readonly PlayerAttackActionInfo Dash_Attack = 
+        new PlayerAttackActionInfo("Dash-Attack", 3f / 11f, Vector2.right, new Vector2(3f, 2.4f), 1.5f);
 
+    
     void Start()
     {
         _lastPos = transform.position.x; //움직인 확인을 위한 초기값
@@ -57,11 +69,14 @@ public partial class PlayerController : Unit
         currentDashCalculate = 0; // 쿨타임 계산 변수 초기화
         processingCoroutine = new IEnumerator[2];
         EnemyLayer = LayerMask.GetMask("Enemy");
+
+        
     }
 
     // Update is called once per frame
     void Update()
     {
+        CalculateImmuneTime();
         TryGroundCheck();
         TryJump();
         CheckAirPramameter();
@@ -232,6 +247,7 @@ public partial class PlayerController : Unit
 
     protected override void Attack()
     {
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("Dash") && anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= dashEndTime) return;
         anim.SetTrigger("Attack");
         if (processingCoroutine[0] == null)
         {
@@ -250,56 +266,54 @@ public partial class PlayerController : Unit
         //1타: 8프레임 중 5 프레임
         //2타: 4 프레임 중 1 프레임
         //3타: 9 프레임 중 2 프레임
-        string _actionName = null; //공격 별로 공격 적용 시점구별을 위한 이름
-        float _attackTime = 0; //어택 타이밍
+        PlayerAttackActionInfo _applyedPlayerAttack = new PlayerAttackActionInfo();
         Unit _tempUnit; //공격당한 유닛들 데미지
 
         for (int i = 0; i < (1f / Time.deltaTime); i++)
         {
             if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack1"))
             {
-                _actionName = "Attack1";
-                _attackTime = 5f / 8f;
-                attackAreaCenter = Vector2.right;
-                attackArea = new Vector2(2.4f, 2.4f);
+                _applyedPlayerAttack = Attack1;
                 break;
             }
             else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack2"))
             {
-                _actionName = "Attack2";
-                _attackTime = 1f / 4f;
-                attackAreaCenter = new Vector2(0.5f, 0.1f);
-                attackArea = new Vector2(2.35f,2.8f);
+                _applyedPlayerAttack = Attack2;
                 break;
             }
             else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack3"))
             {
-                _actionName = "Attack3";
-                _attackTime = 2f / 9f;
-                attackAreaCenter = Vector2.right;
-                attackArea = new Vector2(3f, 2.4f);
+                _applyedPlayerAttack = Attack3;
+                break;
+            }
+            else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
+            {
+                _applyedPlayerAttack = Dash_Attack;
+                StopCoroutine(_savedDashCoroutine);
+                StartCoroutine(DashAttackCoroutine());
                 break;
             }
             yield return null;
         }
-        if(_actionName != null)
+        
+        if(_applyedPlayerAttack.actionName != "None")
         {
-            yield return new WaitForSeconds(ClipsNameLengthsInfo[_actionName] * Mathf.Clamp(_attackTime - anim.GetCurrentAnimatorStateInfo(0).normalizedTime, 0, _attackTime));
-            if (isDash)
+            yield return new WaitForSeconds(UnitAnimationClipInfo[_applyedPlayerAttack.actionName] * Mathf.Clamp(_applyedPlayerAttack.attackTime - anim.GetCurrentAnimatorStateInfo(0).normalizedTime, 0, _applyedPlayerAttack.attackTime));
+            if (isDash && !anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
             {
                 yield break;
             }
-            attackedUnits = Physics2D.OverlapBoxAll(transform.position + new Vector3(attackAreaCenter.x, attackAreaCenter.y, 0) * transform.localScale.x, attackArea, 0, EnemyLayer);
+            attackedUnits = Physics2D.OverlapBoxAll(transform.position + new Vector3(_applyedPlayerAttack.attackAreaCenter.x, _applyedPlayerAttack.attackAreaCenter.y, 0) * transform.localScale.x, _applyedPlayerAttack.attackArea, 0, EnemyLayer);
             
             foreach (var unit in attackedUnits)
             {
                 _tempUnit = unit.GetComponent<Unit>();
                 if (_tempUnit != null)
                 {
-                    _tempUnit.ChangeMyHealth(-(int)__attackPoint);
+                    _tempUnit.ChangeMyHealth((Mathf.Ceil(-__attackPoint * _applyedPlayerAttack.attackCoefficient * 10)) / 10f);
                 }
             }
-            yield return new WaitForSeconds(ClipsNameLengthsInfo[_actionName] * (1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime));
+            yield return new WaitForSeconds(UnitAnimationClipInfo[_applyedPlayerAttack.actionName] * (1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime));
             
         }
         processingCoroutine[0] = null;
@@ -311,46 +325,47 @@ public partial class PlayerController : Unit
         }
     }
 
+    IEnumerator DashAttackCoroutine()
+    {
+        float _temp = UnitAnimationClipInfo["Dash-Attack"] * (1 - (dashEndTime)) - anim.GetCurrentAnimatorStateInfo(0).normalizedTime;
+        if (_temp > 0)
+        {
+            yield return new WaitForSeconds(_temp);
+        }
+        isDash = false;
+    }
 
+    protected override void Death()
+    {
+        
+    }
 
     /*
-    
-    IEnumerator Attack1Coroutine()
+    private void OnDrawGizmos()
     {
-        isAttacking = true;
-        yield return new WaitForSeconds(0.8f);
-        if (currentAction[1] != PlayerAction.Idle)
+        PlayerAttackActionInfo _applyedPlayerAttack = new PlayerAttackActionInfo();
+
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack1"))
         {
-            if (currentAction[1] == PlayerAction.normalAttack_2)
-            {
-                ChangeToNextMove();
-                StartCoroutine(Attack2Coroutine());
-            }
+            _applyedPlayerAttack = Attack1;
         }
-        else
+        else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack2"))
         {
-            isAttacking = false;
-            currentAction[0] = currentAction[1];
-            currentAction[1] = PlayerAction.Idle;
+            _applyedPlayerAttack = Attack2;
+        }
+        else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack3"))
+        {
+            _applyedPlayerAttack = Attack3;
+        }
+        else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
+        {
+            _applyedPlayerAttack = Dash_Attack;
+        }
+        if(_applyedPlayerAttack.actionName != "None")
+        {
+            Gizmos.DrawWireCube(transform.position + new Vector3(_applyedPlayerAttack.attackAreaCenter.x, _applyedPlayerAttack.attackAreaCenter.y, 0) * transform.localScale.x, _applyedPlayerAttack.attackArea);
         }
     }
 
-
-    IEnumerator Attack2Coroutine()
-    {
-        isAttacking = true;
-        yield return new WaitForSeconds(0.4f);
-        ChangeToNextMove();
-        isAttacking = false;
-    }*/
-
-
-    /*
-    private void ChangeToNextMove()
-    {
-        currentAction[0] = currentAction[1];
-        currentAction[1] = PlayerAction.Idle;
-    }
     */
-
 }
