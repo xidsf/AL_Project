@@ -2,7 +2,6 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 
-
 public partial class PlayerController : Unit
 {
     public struct PlayerAttackActionInfo
@@ -21,6 +20,7 @@ public partial class PlayerController : Unit
         public Vector2 attackAreaCenter; //공격의 중심좌표
         public float attackCoefficient; //데미지 계수
     }
+
 
     [Header("PlayerAnimator")]
     [SerializeField] private Animator anim; //Warrior의 Animator를 바꾸기 위한 serializedField
@@ -85,6 +85,8 @@ public partial class PlayerController : Unit
         ChangeAnimationParameter();
         TryAttack();
         AnimCheck();
+
+
     }
 
     private void FixedUpdate()
@@ -95,9 +97,11 @@ public partial class PlayerController : Unit
         ChangeCollider();
     }
 
+
+
     private void TryMove()
     {
-        if(!isAttacking && !isDash)
+        if(!isAttacking && !isDash && !anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
         {
             Move();
         }
@@ -109,7 +113,6 @@ public partial class PlayerController : Unit
 
     protected override void Move()
     {
-        
         float _positionX = Input.GetAxisRaw("Horizontal");
         if( _positionX != 0 )
         {
@@ -144,7 +147,6 @@ public partial class PlayerController : Unit
         
     }
 
-    
 
     private void CalculateDashDelay()
     {
@@ -163,15 +165,14 @@ public partial class PlayerController : Unit
                 anim.SetTrigger("Dash");
                 isDash = true;
                 notInputAttack = true;
-                if(processingCoroutine[0] != null)
+                if (processingCoroutine[1] != null)
+                {
+                    processingCoroutine[1] = null;
+                }
+                if (processingCoroutine[0] != null)
                 {
                     StopCoroutine(processingCoroutine[0]);
                     processingCoroutine[0] = null;
-                }
-                if(processingCoroutine[1] != null)
-                {
-                    StopCoroutine(processingCoroutine[1]);
-                    processingCoroutine[1] = null;
                 }
                 currentDashCalculate = dashDelay;
             }
@@ -239,6 +240,7 @@ public partial class PlayerController : Unit
     {
         if (Input.GetKeyDown(KeyCode.Z) && !isRising && !isFalling && isGround && !notInputAttack)
         {
+            Debug.Log("attack");
             Attack();
         }
     }
@@ -251,12 +253,15 @@ public partial class PlayerController : Unit
         anim.SetTrigger("Attack");
         if (processingCoroutine[0] == null)
         {
+            Debug.Log("start1");
             processingCoroutine[0] = AttackCoroutine();
             StartCoroutine(processingCoroutine[0]);
         }
         else if (processingCoroutine[1] == null && isAttacking)
         {
-            processingCoroutine[1] = AttackCoroutine();
+            if (isDash) return;
+            Debug.Log("save2");
+            processingCoroutine[1] = AttackCoroutine(); 
         }
     }
 
@@ -268,39 +273,46 @@ public partial class PlayerController : Unit
         //3타: 9 프레임 중 2 프레임
         PlayerAttackActionInfo _applyedPlayerAttack = new PlayerAttackActionInfo();
         Unit _tempUnit; //공격당한 유닛들 데미지
-
-        for (int i = 0; i < (1f / Time.deltaTime); i++)
+        int test = 0;
+        for (int i = 0; i < 200; i++)
         {
             if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack1"))
             {
                 _applyedPlayerAttack = Attack1;
+                test = 1;
                 break;
             }
             else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack2"))
             {
                 _applyedPlayerAttack = Attack2;
+                test = 2;
                 break;
             }
             else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack3"))
             {
                 _applyedPlayerAttack = Attack3;
+                test = 3;
                 break;
             }
             else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
             {
                 _applyedPlayerAttack = Dash_Attack;
+                test = 4;
                 StopCoroutine(_savedDashCoroutine);
                 StartCoroutine(DashAttackCoroutine());
                 break;
             }
             yield return null;
         }
-        
+        Debug.Log(test);
         if(_applyedPlayerAttack.actionName != "None")
         {
+            //Debug.Log(_applyedPlayerAttack.actionName + "    " +UnitAnimationClipInfo[_applyedPlayerAttack.actionName] * Mathf.Clamp(_applyedPlayerAttack.attackTime - anim.GetCurrentAnimatorStateInfo(0).normalizedTime, 0, _applyedPlayerAttack.attackTime));
             yield return new WaitForSeconds(UnitAnimationClipInfo[_applyedPlayerAttack.actionName] * Mathf.Clamp(_applyedPlayerAttack.attackTime - anim.GetCurrentAnimatorStateInfo(0).normalizedTime, 0, _applyedPlayerAttack.attackTime));
             if (isDash && !anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
             {
+                processingCoroutine[0] = null;
+                processingCoroutine[1] = null;
                 yield break;
             }
             attackedUnits = Physics2D.OverlapBoxAll(transform.position + new Vector3(_applyedPlayerAttack.attackAreaCenter.x, _applyedPlayerAttack.attackAreaCenter.y, 0) * transform.localScale.x, _applyedPlayerAttack.attackArea, 0, EnemyLayer);
@@ -321,6 +333,7 @@ public partial class PlayerController : Unit
         {
             processingCoroutine[0] = processingCoroutine[1];
             processingCoroutine[1] = null;
+            Debug.Log("next");
             StartCoroutine(processingCoroutine[0]);
         }
     }
@@ -340,7 +353,7 @@ public partial class PlayerController : Unit
         
     }
 
-    /*
+    
     private void OnDrawGizmos()
     {
         PlayerAttackActionInfo _applyedPlayerAttack = new PlayerAttackActionInfo();
@@ -367,5 +380,5 @@ public partial class PlayerController : Unit
         }
     }
 
-    */
+    
 }

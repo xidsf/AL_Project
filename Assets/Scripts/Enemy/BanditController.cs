@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class BanditController : Unit
 {
+    [Header("BanditField")]
     [SerializeField] private TextMeshProUGUI _HPText; //HP표시를 위한 텍스트
     [SerializeField] private Material TransparentMaterial; //적이 반투명해지는 메테리얼
     private Material originMaterial; //원래 사용중이던 메테리얼
@@ -21,7 +22,6 @@ public class BanditController : Unit
         mySprite = GetComponentInChildren<SpriteRenderer>();
         originMaterial = mySprite.material;
         ClipsDictionaryInitialize();
-        
     }
 
     // Update is called once per frame

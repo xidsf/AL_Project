@@ -39,28 +39,12 @@ public partial class PlayerController : Unit
         }
         else if(anim.GetCurrentAnimatorStateInfo(0).IsName("Attack3"))
         {
-            //TryChangeDirection(); --> animationEvent가 그냥 편한듯 방향 전환 타이밍이 뒤죽박죽임
-            if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 0.8)
-            {
-                notInputAttack = false;
-            }
-            else
-            {
-                notInputAttack = true;
-            }
+            notInputAttack = true;
         }
         else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
         {
-            isAttacking = true;
-            if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 0.8f)
-            {
-                notInputAttack = false;
-            }
-            else
-            {
-                notInputAttack = true;
-            }
-            if(anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 3f / 11f)
+            notInputAttack = true;
+            if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 3f / 11f)
             {
                 isDash = false;
             }
@@ -84,7 +68,7 @@ public partial class PlayerController : Unit
     {
         yield return new WaitForSeconds(UnitAnimationClipInfo["Dash"] * (1f - dashEndTime));
         isDash = false;
-        yield return new WaitForSeconds(1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime);
+        yield return new WaitForSeconds(UnitAnimationClipInfo["Dash"] * (1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime));
     }
     
 

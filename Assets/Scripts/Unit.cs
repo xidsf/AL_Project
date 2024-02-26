@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor.Animations;
+using Unity.Mathematics;
+using static PlayerController;
 
 abstract public class Unit : MonoBehaviour
 {
@@ -23,6 +25,9 @@ abstract public class Unit : MonoBehaviour
 
     [Header("UnitAnimatorController")]
     [SerializeField] protected AnimatorController UnitAnimatorController; //개체 애니메이션 변환에 따른 효과를 코루틴으로 제어하기 위한 정보
+
+    [Header("DamageIndicator")]
+    [SerializeField] protected GameObject damageIndicatorPrefab;
 
     protected Dictionary<string, float> UnitAnimationClipInfo = new Dictionary<string, float>(); //공격종류와 공격 별 걸리는 시간을 저장한 dictionary
     
@@ -52,7 +57,7 @@ abstract public class Unit : MonoBehaviour
         for (int i = 0; i < UnitAnimatorController.animationClips.Length; i++)
         {
             UnitAnimationClipInfo.Add(UnitAnimatorController.animationClips[i].name, UnitAnimatorController.animationClips[i].length);
-            Debug.Log(UnitAnimatorController.animationClips[i].name + UnitAnimatorController.animationClips[i].length);
+            //Debug.Log(UnitAnimatorController.animationClips[i].name + UnitAnimatorController.animationClips[i].length);
         }
     }
 
@@ -83,7 +88,13 @@ abstract public class Unit : MonoBehaviour
         _tempHP = __currentHP;
         if (_change < 0)
         {
-            Debug.Log(Mathf.Ceil((__currentHP + Mathf.Clamp(_change + __defencePoint, _change, 0)) * 10) / 10f);
+            //Debug.Log(Mathf.Ceil((__currentHP + Mathf.Clamp(_change + __defencePoint, _change, 0)) * 10) / 10f);
+            float _randgap = 0.3f;
+            Vector3 randomPosition = new Vector3(UnityEngine.Random.Range((float)transform.position.x - _randgap, (float)transform.position.x + _randgap), 
+                UnityEngine.Random.Range((float)transform.position.y - _randgap, (float)transform.position.y + _randgap), 
+                UnityEngine.Random.Range((float)transform.position.z - _randgap, (float)transform.position.z + _randgap));
+            GameObject clone = Instantiate(damageIndicatorPrefab, randomPosition, Quaternion.identity);
+            clone.GetComponent<DamageIndicator>().ShowDamageIndicator(Mathf.Ceil(Mathf.Clamp(_change + __defencePoint, _change, 0)*10) *0.1f);
             __currentHP = Mathf.Ceil((__currentHP + Mathf.Clamp(_change + __defencePoint, _change, 0)) * 10) / 10f;
         }
         else
@@ -109,7 +120,7 @@ abstract public class Unit : MonoBehaviour
         return __attackPoint;
     }
 
-    protected void MoveCheck()
+    protected virtual void MoveCheck()
     {
         if (MathF.Abs(_lastPos - transform.position.x) >= 0.01f)
         {
