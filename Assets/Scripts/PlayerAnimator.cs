@@ -35,7 +35,6 @@ public partial class PlayerController : Unit
         if(anim.GetCurrentAnimatorStateInfo(0).IsName("Attack1") || anim.GetCurrentAnimatorStateInfo(0).IsName("Attack2"))
         {
             isAttacking = true;
-            //TryChangeDirection(); --> animationEvent가 그냥 편한듯 방향 전환 타이밍이 뒤죽박죽임
         }
         else if(anim.GetCurrentAnimatorStateInfo(0).IsName("Attack3"))
         {
@@ -43,6 +42,7 @@ public partial class PlayerController : Unit
         }
         else if (anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
         {
+            isAttacking = true;
             notInputAttack = true;
             if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 3f / 11f)
             {
@@ -68,49 +68,6 @@ public partial class PlayerController : Unit
     {
         yield return new WaitForSeconds(UnitAnimationClipInfo["Dash"] * (1f - dashEndTime));
         isDash = false;
-        yield return new WaitForSeconds(UnitAnimationClipInfo["Dash"] * (1f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime));
     }
     
-
-
-    /*  animEvent로 대체 : coroutine과 animationEvent중 뭐로 구현하는게 좋은진 모르겠지만 AnimationEvent가 편해서 걍 함
-    private void TryChangeDirection()
-    {
-        float _dirX = Input.GetAxisRaw("Horizontal");
-        if (transform.localScale.x != _dirX && _dirX != 0 && !isChangedDirection)
-        {
-            isChangedDirection = true;
-            if (processingCoroutine != null)
-            {
-                StopCoroutine(processingCoroutine);
-            }
-            processingCoroutine = ChangeAttackDirectionCoroutine(_dirX);
-            StartCoroutine(processingCoroutine);
-        }
-        else if(transform.localScale.x == _dirX && isChangedDirection && _dirX != 0)
-        {
-            isChangedDirection = false;
-            if (processingCoroutine != null)
-            {
-                StopCoroutine(processingCoroutine);
-            }
-        }
-    }
-    */
-
-
-    /*  animEvent로 대체
-    IEnumerator ChangeAttackDirectionCoroutine(float _dirX)
-    {
-        yield return new WaitForSeconds(0.85f - anim.GetCurrentAnimatorStateInfo(0).normalizedTime);
-        transform.localScale = new Vector3(_dirX, transform.localScale.y, transform.localScale.z);
-        isChangedDirection = false;
-    }
-    */
-
-
-
-
-
-
 }

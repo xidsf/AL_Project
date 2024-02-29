@@ -4,7 +4,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor.Animations;
 using Unity.Mathematics;
-using static PlayerController;
+
+/*
+ * 함수 상속시
+ * DamageIndicator 프리팹 추가해야함
+ * 나머진 인스펙터창에서 하나씩 추가
+ * 애니메이션 시간정보 필요시 ClipsDictionaryInitialize()를 start함수에 넣으면 사용 가능
+ */
 
 abstract public class Unit : MonoBehaviour
 {
@@ -31,7 +37,6 @@ abstract public class Unit : MonoBehaviour
 
     protected Dictionary<string, float> UnitAnimationClipInfo = new Dictionary<string, float>(); //공격종류와 공격 별 걸리는 시간을 저장한 dictionary
     
-
     protected BoxCollider2D myCollider; //본인 collider
     protected Rigidbody2D myRigid; //본인 rigidbody
     
@@ -41,6 +46,7 @@ abstract public class Unit : MonoBehaviour
     protected bool isRising; //올라가고 있는지 확인
     protected bool isAttacking; //공격중 채크
     protected bool isBlocked; //플레이어가 벽으로 이동하면 벽을 뚫는 현상 수정을 위한 불값
+    protected bool canMove; //움직임이 가능인지 확인용 상태 변수
     protected bool isImmune; //무적상태 변수
 
     protected float _lastPos; //움직임 채크를 위한 이전 위치 저장 변수
@@ -69,37 +75,41 @@ abstract public class Unit : MonoBehaviour
             {
                 currentImmuneTime =- Time.deltaTime;
             }
-            if(currentImmuneTime <= 0)
+            else
             {
                 isImmune = false;
             }
         }
     }
 
-    public void CheckPlayerBlocked(bool _flag) //캐릭터 벽뚫방지용 collider확인
-    {
-        isBlocked = _flag;
-    }
+    
 
-    public virtual void ChangeMyHealth(float _change)
+    public void ChangeMyHealth(float _change)
     {
         if (isImmune) return;
         float _tempHP;
         _tempHP = __currentHP;
+        float _randgap = 0.3f;
+        Vector3 randomPosition = new Vector3(UnityEngine.Random.Range((float)transform.position.x - _randgap, (float)transform.position.x + _randgap),
+            UnityEngine.Random.Range((float)transform.position.y - _randgap, (float)transform.position.y + _randgap),
+            UnityEngine.Random.Range((float)transform.position.z - _randgap, (float)transform.position.z + _randgap));
+        GameObject clone = Instantiate(damageIndicatorPrefab, randomPosition, Quaternion.identity);
         if (_change < 0)
         {
-            //Debug.Log(Mathf.Ceil((__currentHP + Mathf.Clamp(_change + __defencePoint, _change, 0)) * 10) / 10f);
-            float _randgap = 0.3f;
-            Vector3 randomPosition = new Vector3(UnityEngine.Random.Range((float)transform.position.x - _randgap, (float)transform.position.x + _randgap), 
-                UnityEngine.Random.Range((float)transform.position.y - _randgap, (float)transform.position.y + _randgap), 
-                UnityEngine.Random.Range((float)transform.position.z - _randgap, (float)transform.position.z + _randgap));
-            GameObject clone = Instantiate(damageIndicatorPrefab, randomPosition, Quaternion.identity);
-            clone.GetComponent<DamageIndicator>().ShowDamageIndicator(Mathf.Ceil(Mathf.Clamp(_change + __defencePoint, _change, 0)*10) *0.1f);
+            //Debug.Log(Mathf.Ceil(Mathf.Clamp(_change + __defencePoint, _change, 0)));
+            clone.GetComponent<DamageIndicator>().ShowDamageIndicator(Mathf.Ceil(Mathf.Clamp(_change + __defencePoint, _change, 0)*10) *0.1f, Color.red);
             __currentHP = Mathf.Ceil((__currentHP + Mathf.Clamp(_change + __defencePoint, _change, 0)) * 10) / 10f;
+        }
+        else if(_change > 0)
+        {
+            clone.GetComponent<DamageIndicator>().ShowDamageIndicator(__currentHP - Mathf.Clamp(__currentHP + _change, -__maxHP, __maxHP), Color.green);
+
+            __currentHP = Mathf.Clamp(__currentHP + _change, -__maxHP, __maxHP);
+            
         }
         else
         {
-            __currentHP = Mathf.Clamp(__currentHP + _change, -__maxHP, __maxHP);
+            clone.GetComponent<DamageIndicator>().ShowDamageIndicator(0, Color.white);
         }
         if (__currentHP < _tempHP)
         {
@@ -163,6 +173,11 @@ abstract public class Unit : MonoBehaviour
             }
         }
         return false;
+    }
+
+    protected float CalculateDamage(float _coefficient)
+    {
+        return __attackPoint * _coefficient;
     }
 
 }

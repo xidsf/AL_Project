@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class SideCheckCollider : MonoBehaviour
 {
-    private Unit myUnit;
+    private PlayerController player;
 
     private void Start()
     {
-        myUnit = FindObjectOfType<Unit>();
+        player = GetComponentInParent<PlayerController>();
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
@@ -17,7 +17,7 @@ public class SideCheckCollider : MonoBehaviour
         {
             if (collision.gameObject.CompareTag("Ground"))
             {
-                myUnit.CheckPlayerBlocked(true);
+                player.CheckPlayerBlocked(true);
             }
         }
     }
@@ -29,7 +29,7 @@ public class SideCheckCollider : MonoBehaviour
         {
             if (collision.gameObject.CompareTag("Ground"))
             {
-                myUnit.CheckPlayerBlocked(false);
+                player.CheckPlayerBlocked(false);
             }
         }
     }

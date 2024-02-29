@@ -5,20 +5,21 @@ using UnityEngine;
 
 public class DamageIndicator : MonoBehaviour
 {
-    
     [SerializeField] private TextMeshProUGUI _textMeshProUGUI;
     private const float _maxSize = 0.7f;
     private const float _minSize = 0.2f;
 
-    public void ShowDamageIndicator(float _damage)
+    public void ShowDamageIndicator(float _damage, Color _color)
     {
         _textMeshProUGUI.text = _damage.ToString("F1");
-        StartCoroutine(DamageColorSizeChange());
+        StartCoroutine(DamageColorSizeChange(_color));
+
     }
 
-    IEnumerator DamageColorSizeChange()
+    IEnumerator DamageColorSizeChange(Color _color)
     {
         float _currentFontSize;
+        _textMeshProUGUI.color = _color;
         for (int i = 0; i < 60; i++)
         {
             _currentFontSize = _textMeshProUGUI.fontSize;
