@@ -115,7 +115,8 @@ public partial class PlayerController : Unit
         {
             transform.localScale = new Vector3(_positionX, transform.localScale.y, transform.localScale.z);
         }
-        if(!isBlocked)
+
+        if (!isBlocked)
         {
             _positionX = _positionX * __moveSpeed * Time.deltaTime;
             transform.position = new Vector2(transform.position.x + _positionX, transform.position.y);
@@ -136,12 +137,13 @@ public partial class PlayerController : Unit
             if (transform.localScale.x < 0) _dir = -1;
             else _dir = 1;
         }
+
         if (!isBlocked)
         {
             _dir = _dir * dashSpeed * Time.deltaTime;
             transform.position = new Vector2(transform.position.x + _dir, transform.position.y);
         }
-        
+
     }
 
 

@@ -16,13 +16,11 @@ public class BanditController : Unit
     private bool isDead; //적 무환부활을 위한 변수
     private bool isCongnizingPlayer; //적이 플레이어 인식을 했는지 알기위한 변수
     private bool isInEnemyArea = true; //bandit이 공격 영역 안에 있는지 확인
-    public bool isInRestArea = true; //휴식 지역 내에 있는지 확인
+    [HideInInspector] public bool isInRestArea = true; //휴식 지역 내에 있는지 확인
 
-    [SerializeField] private bool ispossibleChangeLocalScale = true;
-    private const float localScaleChangeCoolTime = 0.5f; //캐릭터 방향 전환 쿨타임. 없으면 버그남
 
-    public bool isRightBlocked;
-    public bool isLeftBlocked; //적은 플레이어를 보며 뒤로도 이동 가능하기 때문에 양쪽에 콜라이더 제작
+    private bool isRightBlocked;
+    private bool isLeftBlocked; //적은 플레이어를 보며 뒤로도 이동 가능하기 때문에 양쪽에 콜라이더 제작
 
     private CheckArea EnemyArea; //적이 상주하는 영역을 받아올 변수
     private RestArea RestArea; //휴식 지역을 받아오는 변수
@@ -52,6 +50,9 @@ public class BanditController : Unit
 
         originMaterial = mySprite.material;
         ClipsDictionaryInitialize();
+
+        currentLocalScale = Holder.transform.localScale.x;
+
     }
 
     // Update is called once per frame
@@ -65,15 +66,24 @@ public class BanditController : Unit
         ChangeMoveDirection();
         CalculateCongnizeTime();
         
-
         AnimCheck();
     }
 
     private void FixedUpdate()
     {
         Move();
+        //TestVelocity();
         MoveCheck();
         
+    }
+
+    private void TestVelocity()
+    {
+        float down = 0.1f;
+        if(!isGround)
+        {
+            transform.position = new Vector3(transform.position.x, transform.position.y - down, transform.position.z);
+        }
     }
 
     private void ChangeMoveDirection()
@@ -98,7 +108,7 @@ public class BanditController : Unit
             else
             {
                 moveDirection = 0;
-                currentLocalScale = 0;
+                currentLocalScale = Holder.transform.localScale.x;
                 return;
             }
             if (_distance > combatDistance + combatDistanceArea) moveDirection = _direction;
@@ -106,7 +116,7 @@ public class BanditController : Unit
             else
             {
                 moveDirection = 0;
-                currentLocalScale = 0;
+                currentLocalScale = Holder.transform.localScale.x;
             }
         }
         else if(!isCongnizingPlayer && !isInRestArea)
@@ -124,6 +134,7 @@ public class BanditController : Unit
             else
             {
                 moveDirection = 0;
+                currentLocalScale = Holder.transform.localScale.x;
             }
         }
         else
@@ -136,7 +147,10 @@ public class BanditController : Unit
     {
         float _move;
         if (isImmune) return;
-        if(isInEnemyArea && isCongnizingPlayer)
+        Debug.Log(currentLocalScale);
+        
+
+        if (isInEnemyArea && isCongnizingPlayer)
         {
             if (moveDirection == 0) return;
             _move = moveDirection * combatIdleSpeed;
@@ -148,15 +162,12 @@ public class BanditController : Unit
         else _move = 0;
         if (isRightBlocked && _move > 0) return;
         else if(isLeftBlocked && _move < 0) return;
-
         transform.position = new Vector2(transform.position.x + _move * Time.deltaTime, transform.position.y);
-        if(currentLocalScale != 0 && ispossibleChangeLocalScale && currentLocalScale != Holder.transform.localScale.x)
+        
+        if (currentLocalScale != 0 && currentLocalScale != Holder.transform.localScale.x)
         {
-            ispossibleChangeLocalScale = false;
-            Invoke("ChangeispossibleChangeLocalScaleTrue", localScaleChangeCoolTime);
             Holder.transform.localScale = new Vector3(currentLocalScale, 1, 1);
         }
-
     }
 
     public bool CheckRestHeal()
@@ -189,10 +200,6 @@ public class BanditController : Unit
         
     }
 
-    private void ChangeispossibleChangeLocalScaleTrue()
-    {
-        ispossibleChangeLocalScale = true;
-    }
 
     protected override void CalculateImmuneTime()
     {

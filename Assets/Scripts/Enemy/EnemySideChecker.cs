@@ -9,7 +9,7 @@ public class EnemySideChecker : MonoBehaviour
     [SerializeField] string dir;
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if(collision.CompareTag("Ground"))
+        if (collision.CompareTag("Ground"))
         {
             banditController.CheckEnemyBlocked(dir, true);
         }

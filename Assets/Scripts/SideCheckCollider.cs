@@ -19,6 +19,7 @@ public class SideCheckCollider : MonoBehaviour
             {
                 player.CheckPlayerBlocked(true);
             }
+            Debug.Log(collision.gameObject);
         }
     }
 
