@@ -13,16 +13,15 @@ public class BanditController : Unit
     private Material originMaterial; //원래 사용중이던 메테리얼
     private PlayerController player;
 
-    private bool isDead; //적 무환부활을 위한 변수
-    private bool isCongnizingPlayer; //적이 플레이어 인식을 했는지 알기위한 변수
+    
+    [SerializeField] private bool isCongnizingPlayer; //적이 플레이어 인식을 했는지 알기위한 변수
     private bool isInEnemyArea = true; //bandit이 공격 영역 안에 있는지 확인
     [HideInInspector] public bool isInRestArea = true; //휴식 지역 내에 있는지 확인
-
+    [HideInInspector] public bool isInTryAttackArea = false;
 
     private bool isRightBlocked;
     private bool isLeftBlocked; //적은 플레이어를 보며 뒤로도 이동 가능하기 때문에 양쪽에 콜라이더 제작
 
-    private CheckArea EnemyArea; //적이 상주하는 영역을 받아올 변수
     private RestArea RestArea; //휴식 지역을 받아오는 변수
 
     [Header("CombatStatus")]
@@ -32,7 +31,7 @@ public class BanditController : Unit
     [SerializeField] private float AttackCoolTime; //공격 쿨타임
     private const float combatDistanceArea = 0.05f; //범위 지정 안하면 계속 부들부들거림
     private float currentToIdleTime;
-    private float currentAttackCoolTime;
+    private float currentAttackCoolTime = 2f;
     private float moveDirection;
     private float currentLocalScale;
     
@@ -43,55 +42,48 @@ public class BanditController : Unit
     private void Start()
     {
         player = FindObjectOfType<PlayerController>(); //플레이어는 1명밖에 없음
-        EnemyArea = GetComponentInParent<CheckArea>(); //공격 영역 받아오기
         RestArea = GetComponentInParent<CheckArea>().GetComponentInChildren<RestArea>();
         myRigid = GetComponent<Rigidbody2D>();
         myCollider = GetComponent<BoxCollider2D>(); //필요한 컴포넌트
 
         originMaterial = mySprite.material;
-        ClipsDictionaryInitialize();
 
         currentLocalScale = Holder.transform.localScale.x;
+        moveDirection = Holder.transform.localScale.x;
 
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (isDead) return;
-        //Debug.Log(isImmune);
-        CalculateImmuneTime();
-        TryGroundCheck();
-        ChangeTextHP();
-        ChangeMoveDirection();
-        CalculateCongnizeTime();
-        
+        if (!isDead)
+        {
+            CalculateImmuneTime();
+            TryGroundCheck();
+            ChangeTextHP();
+            ChangeMoveDirection();
+            CalculateCongnizeTime();
+            CalculateAttackCoolTime();
+        }
+
         AnimCheck();
     }
 
     private void FixedUpdate()
     {
+        if (isDead) return;
         Move();
-        //TestVelocity();
         MoveCheck();
         
     }
 
-    private void TestVelocity()
-    {
-        float down = 0.1f;
-        if(!isGround)
-        {
-            transform.position = new Vector3(transform.position.x, transform.position.y - down, transform.position.z);
-        }
-    }
 
     private void ChangeMoveDirection()
     {
         Vector2 _Player_Bandit_Vecter = player.transform.position - transform.position;
         float _distance;
         float _direction;
-        if (isCongnizingPlayer && isInEnemyArea/* && currentAttackCoolTime > 0*/)
+        if (isCongnizingPlayer && isInEnemyArea)
         {
             _distance = _Player_Bandit_Vecter.magnitude;
             //Debug.Log(_Player_Bandit_Vecter.x);
@@ -111,12 +103,15 @@ public class BanditController : Unit
                 currentLocalScale = Holder.transform.localScale.x;
                 return;
             }
-            if (_distance > combatDistance + combatDistanceArea) moveDirection = _direction;
-            else if (_distance < combatDistance - combatDistanceArea) moveDirection = -_direction;
+            if(currentAttackCoolTime > 0)
+            {
+                if (_distance > combatDistance + combatDistanceArea) moveDirection = _direction;
+                else if (_distance < combatDistance - combatDistanceArea) moveDirection = -_direction;
+                else moveDirection = 0;
+            }
             else
             {
-                moveDirection = 0;
-                currentLocalScale = Holder.transform.localScale.x;
+                moveDirection = _direction;
             }
         }
         else if(!isCongnizingPlayer && !isInRestArea)
@@ -146,13 +141,15 @@ public class BanditController : Unit
     protected override void Move()
     {
         float _move;
-        if (isImmune) return;
-        Debug.Log(currentLocalScale);
-        
-
-        if (isInEnemyArea && isCongnizingPlayer)
+        if (isImmune || isAttacking) return;
+        if (moveDirection == 0) return;
+        if (isInEnemyArea && isCongnizingPlayer && currentAttackCoolTime <= 0)
         {
-            if (moveDirection == 0) return;
+            _move = moveDirection * __moveSpeed;
+        }
+        else if (isInEnemyArea && isCongnizingPlayer && currentAttackCoolTime > 0)
+        {
+            
             _move = moveDirection * combatIdleSpeed;
         }
         else if ((RestArea.transform.position - transform.position).x != 0)
@@ -191,13 +188,28 @@ public class BanditController : Unit
             if(currentToIdleTime <= 0)
             {
                 isCongnizingPlayer = false;
+                currentAttackCoolTime = 2f;
             }
+        }
+    }
+
+    private void CalculateAttackCoolTime()
+    {
+        if(isCongnizingPlayer && currentAttackCoolTime > 0)
+        {
+            currentAttackCoolTime -= Time.deltaTime;
+        }
+        if(currentAttackCoolTime <= 0 && isInTryAttackArea && !isAttacking)
+        {
+            Attack();
         }
     }
 
     protected override void Attack()
     {
-        
+        anim.SetTrigger("Attack");
+        isAttacking = true;
+        currentAttackCoolTime = AttackCoolTime;
     }
 
 
@@ -209,15 +221,23 @@ public class BanditController : Unit
 
     protected override void AfterDamaged()
     {
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("Attack"))
+        {
+            StartCoroutine(SuperArmorDamagedCoroutine());
+            return;
+        }
         anim.SetTrigger("Hurt");
         PlayerCongnize();
-        if(__currentHP <= 0)
-        {
-            Death();
-        }
     }
 
-    private void PlayerCongnize()
+    IEnumerator SuperArmorDamagedCoroutine()
+    {
+        mySprite.material = TransparentMaterial;
+        yield return new WaitForSeconds(0.1f);
+        mySprite.material = originMaterial;
+    }
+
+    public void PlayerCongnize()
     {
         isCongnizingPlayer = true;
         currentToIdleTime = combatToIdleTime;
@@ -232,8 +252,8 @@ public class BanditController : Unit
     protected override void Death()
     {
         isDead = true;
-        anim.SetTrigger("Death");
         isImmune = true;
+        anim.SetTrigger("Death");
         StartCoroutine(DeathCoroutine());
     }
 
@@ -255,14 +275,48 @@ public class BanditController : Unit
 
     private void AnimCheck()
     {
-        anim.SetBool("Combat", isCongnizingPlayer);
-        anim.SetBool("Move", (isMoving && AttackCoolTime < 0) || isMoving && !isCongnizingPlayer);
+        anim.SetBool("Grounded", isGround);
+        anim.SetBool("Combat", (isCongnizingPlayer && currentAttackCoolTime > 0));
+        anim.SetBool("Move", ((isCongnizingPlayer && currentAttackCoolTime <= 0) || isMoving && !isCongnizingPlayer));
     }
 
     public void CheckEnemyBlocked(string _dir, bool _flag)
     {
         if (_dir == "Right") isRightBlocked = _flag;
         else if (_dir == "Left") isLeftBlocked = _flag;
+    }
+
+    public void AttackArea()
+    {
+        PlayerController _temp; //플레이어 공격이 될 경우 담길 변수
+        Collider2D[] _colliders;
+        _colliders = Physics2D.OverlapBoxAll(transform.position + Vector3.left * 0.5f * Holder.transform.localScale.x, new Vector2(1.6f, 2f), 0);
+        foreach (var unit in _colliders)
+        {
+            _temp = unit.GetComponent<PlayerController>();
+            if (_temp != null)
+            {
+                _temp.ChangeMyHealth(-CalculateDamage(1));
+                StartCoroutine(CheckPlayerDeath(_temp));
+            }
+        }
+        
+    }
+
+    IEnumerator CheckPlayerDeath(PlayerController _player)
+    {
+        yield return new WaitForSeconds(1);
+        if (_player.isDead) isCongnizingPlayer = false;
+    }
+
+    public void CancelIsAttacking()
+    {
+        isAttacking = false;
+    }
+
+    public bool GetIsCongnizingPlayer()
+    {
+        return isCongnizingPlayer;
     }
 
 }

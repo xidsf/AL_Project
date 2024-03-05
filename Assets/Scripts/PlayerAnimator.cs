@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Animations;
 using UnityEngine;
 
 //애니메이션 코드가 길어질 것 같아 따로 코드 제작...했는데 별로 안김,,,ㅋ
@@ -66,7 +65,7 @@ public partial class PlayerController : Unit
 
     IEnumerator DashCoroutine()
     {
-        yield return new WaitForSeconds(UnitAnimationClipInfo["Dash"] * (1f - dashEndTime));
+        yield return new WaitForSeconds(0.7f * (1f - dashEndTime));
         isDash = false;
     }
     

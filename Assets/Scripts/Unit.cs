@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEditor.Animations;
 using Unity.Mathematics;
 
 /*
@@ -26,11 +25,8 @@ abstract public class Unit : MonoBehaviour
 
     [Header("UnitSpeed")]
     [SerializeField] protected float __moveSpeed; //이동 속도
-    [SerializeField] protected float __attackSpeed; //공격 속도
     [SerializeField] protected float __recoveryTime; //복구 속도
 
-    [Header("UnitAnimatorController")]
-    [SerializeField] protected AnimatorController UnitAnimatorController; //개체 애니메이션 변환에 따른 효과를 코루틴으로 제어하기 위한 정보
 
     [Header("DamageIndicator")]
     [SerializeField] protected GameObject damageIndicatorPrefab;
@@ -48,6 +44,7 @@ abstract public class Unit : MonoBehaviour
     protected bool isBlocked; //플레이어가 벽으로 이동하면 벽을 뚫는 현상 수정을 위한 불값
     protected bool canMove; //움직임이 가능인지 확인용 상태 변수
     protected bool isImmune; //무적상태 변수
+    public bool isDead; //사망 확인 변수
 
     protected float _lastPos; //움직임 채크를 위한 이전 위치 저장 변수
 
@@ -58,14 +55,7 @@ abstract public class Unit : MonoBehaviour
     abstract protected void Death();
 
     
-    protected void ClipsDictionaryInitialize()
-    {
-        for (int i = 0; i < UnitAnimatorController.animationClips.Length; i++)
-        {
-            UnitAnimationClipInfo.Add(UnitAnimatorController.animationClips[i].name, UnitAnimatorController.animationClips[i].length);
-            //Debug.Log(UnitAnimatorController.animationClips[i].name + UnitAnimatorController.animationClips[i].length);
-        }
-    }
+    
 
     protected virtual void CalculateImmuneTime()
     {
@@ -73,7 +63,7 @@ abstract public class Unit : MonoBehaviour
         {
             if(currentImmuneTime > 0)
             {
-                currentImmuneTime =- Time.deltaTime;
+                currentImmuneTime -= Time.deltaTime;
             }
             else
             {
@@ -111,7 +101,11 @@ abstract public class Unit : MonoBehaviour
         {
             clone.GetComponent<DamageIndicator>().ShowDamageIndicator(0, Color.white);
         }
-        if (__currentHP < _tempHP)
+        if(__currentHP <= 0 && !isDead)
+        {
+            Death();
+        }
+        else if (__currentHP < _tempHP)
         {
             isImmune = true;
             currentImmuneTime = __ImmuneTime;

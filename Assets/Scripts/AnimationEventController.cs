@@ -4,11 +4,13 @@ using UnityEngine;
 
 public class AnimationEventController : MonoBehaviour
 {
-    public delegate void PlayerActionDelegate();
-    static public PlayerActionDelegate applyAction;
+    public delegate void UnitActionDelegate();
+    static public UnitActionDelegate applyAction;
 
     public delegate void ChangeDirectionDelegate();
-    static public PlayerActionDelegate changeDir;
+    static public UnitActionDelegate changeDir;
+
+
 
     private void AttackAction()
     {

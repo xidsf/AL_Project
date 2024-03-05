@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class RestArea : MonoBehaviour
 {
-    IEnumerator SavedHealCoroutine;
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -12,8 +11,19 @@ public class RestArea : MonoBehaviour
         {
             BanditController bandit = collision.GetComponent<BanditController>();
             bandit.isInRestArea = true;
-            StartCoroutine(HealCoroutine(bandit));
+            
         }
+    }
+
+    private void OnTriggerStay2D(Collider2D collision)
+    {
+        if (collision.gameObject.CompareTag("Enemy"))
+        {
+            BanditController bandit = collision.GetComponent<BanditController>();
+            StartCoroutine(HealCoroutine(bandit));
+
+        }
+
     }
 
     IEnumerator HealCoroutine(BanditController _bandit)
@@ -31,5 +41,7 @@ public class RestArea : MonoBehaviour
             collision.GetComponent<BanditController>().isInRestArea = false;
         }
     }
+
+    
 
 }

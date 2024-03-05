@@ -2,6 +2,7 @@ using System.Collections;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public partial class PlayerController : Unit
 {
@@ -55,7 +56,6 @@ public partial class PlayerController : Unit
     {
         _lastPos = transform.position.x; //움직인 확인을 위한 초기값
 
-        ClipsDictionaryInitialize();
 
         myRigid = GetComponent<Rigidbody2D>();
         myCollider = GetComponent<BoxCollider2D>(); //필요한 컴포넌트
@@ -73,32 +73,41 @@ public partial class PlayerController : Unit
     // Update is called once per frame
     void Update()
     {
-        CalculateImmuneTime();
-        TryGroundCheck();
-        TryJump();
-        CheckAirPramameter();
-        CalculateDashDelay();
-        TryDash();
-        ChangeAnimationParameter();
-        TryAttack();
+        if (Input.GetKeyDown(KeyCode.Escape)) SceneManager.LoadScene("Title");
+
+        if(!isDead)
+        {
+            CalculateImmuneTime();
+            TryJump();
+            CheckAirPramameter();
+            TryDash();
+            ChangeAnimationParameter();
+            TryAttack();
+        }
+
         AnimCheck();
 
-
+        TryGroundCheck();
+        CalculateDashDelay();
     }
 
     private void FixedUpdate()
     {
         RestrictVelocity();
-        TryMove();
-        MoveCheck();
-        ChangeCollider();
+        if(!isDead)
+        {
+            TryMove();
+            MoveCheck();
+            ChangeCollider();
+        }
+        
     }
 
 
 
     private void TryMove()
     {
-        if(!isAttacking && !isDash && !anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack"))
+        if(!isAttacking && !isDash && !anim.GetCurrentAnimatorStateInfo(0).IsName("Dash-Attack") && !anim.GetCurrentAnimatorStateInfo(0).IsName("Hurt"))
         {
             Move();
         }
@@ -110,6 +119,7 @@ public partial class PlayerController : Unit
 
     protected override void Move()
     {
+        
         float _positionX = Input.GetAxisRaw("Horizontal");
         if( _positionX != 0 )
         {
@@ -157,6 +167,7 @@ public partial class PlayerController : Unit
 
     private void TryDash()
     {
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("Hurt")) return;
         if(Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.LeftShift))
         {
             if (currentDashCalculate <= 0)
@@ -245,9 +256,45 @@ public partial class PlayerController : Unit
         isBlocked = _flag;
     }
 
+    protected override void AfterDamaged()
+    {
+        notInputAttack = true;
+        anim.SetTrigger("Hurt");
+        isImmune = true;
+        isDash = false;
+        currentImmuneTime = __ImmuneTime;
+
+    }
+
+    protected override void CalculateImmuneTime()
+    {
+        base.CalculateImmuneTime();
+        if(!isImmune)
+        {
+            notInputAttack = false;
+        }
+    }
+
     protected override void Death()
     {
-        
+        isDead = true;
+        isImmune = true;
+        anim.SetTrigger("Death");
+        myCollider.offset = new Vector2(0.05f, -1.2f);
+        myCollider.size = new Vector2(1.07f, 0.1f);
+        StartCoroutine(DeathCoroutine());
+    }
+
+    IEnumerator DeathCoroutine()
+    {
+        yield return new WaitForSeconds(3f);
+        transform.position = new Vector3(-6f, 2f, 0);
+        __currentHP = __maxHP;
+        isImmune = false;
+        isDead = false;
+        myCollider.offset = new Vector2(0.05f, -0.28f);
+        myCollider.size = new Vector2(1.07f, 1.98f);
+        anim.SetTrigger("Recover");
     }
 
 
